@@ -265,187 +265,187 @@ def start_export(options):
         bpy.ops.mesh.separate(type='MATERIAL')
         bpy.ops.object.mode_set(mode='OBJECT')
 
-        #try:
-        for j in range(0, materialSlotSize):
-            materialNames.append(originalBlenderMesh.material_slots[j].name)
+        try:
+            for j in range(0, materialSlotSize):
+                materialNames.append(originalBlenderMesh.material_slots[j].name)
 
-        mtlIndex = 0
-        for j in range(0, materialSlotSize):
-            selectedObject = bpy.context.selected_objects[j]
+            mtlIndex = 0
+            for j in range(0, materialSlotSize):
+                selectedObject = bpy.context.selected_objects[j]
 
-            for blenderObject in bpy.context.selected_objects:
-                if (blenderObject.material_slots[0].name != materialNames[j]):
-                    continue
+                for blenderObject in bpy.context.selected_objects:
+                    if (blenderObject.material_slots[0].name != materialNames[j]):
+                        continue
 
-                selectedObject = blenderObject
+                    selectedObject = blenderObject
 
-            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].mtlIndex = mtlIndex
+                Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].mtlIndex = mtlIndex
 
-            # Calculate tangents
-            selectedObject.data.calc_tangents()
+                # Calculate tangents
+                selectedObject.data.calc_tangents()
 
-            # Material bound
-            # Blender AABB
-            aabbMin = Vector3()
-            aabbMin.x = selectedObject.bound_box[0][0]
-            aabbMin.y = selectedObject.bound_box[0][1]
-            aabbMin.z = selectedObject.bound_box[0][2]
-            aabbMax = Vector3()
-            aabbMax.x = selectedObject.bound_box[6][0]
-            aabbMax.y = selectedObject.bound_box[6][1]
-            aabbMax.z = selectedObject.bound_box[6][2]
+                # Material bound
+                # Blender AABB
+                aabbMin = Vector3()
+                aabbMin.x = selectedObject.bound_box[0][0]
+                aabbMin.y = selectedObject.bound_box[0][1]
+                aabbMin.z = selectedObject.bound_box[0][2]
+                aabbMax = Vector3()
+                aabbMax.x = selectedObject.bound_box[6][0]
+                aabbMax.y = selectedObject.bound_box[6][1]
+                aabbMax.z = selectedObject.bound_box[6][2]
 
-            # Blender bound center
-            boxCenter = 0.125 * sum((Vector(bound) for bound in selectedObject.bound_box), Vector())
-            center = Vector3()
-            center.x = boxCenter.x
-            center.y = boxCenter.y
-            center.z = boxCenter.z
+                # Blender bound center
+                boxCenter = 0.125 * sum((Vector(bound) for bound in selectedObject.bound_box), Vector())
+                center = Vector3()
+                center.x = boxCenter.x
+                center.y = boxCenter.y
+                center.z = boxCenter.z
 
-            # Blender bound radius
-            #TEMP?
-            distanceBetweenAABB = Vector3()
-            distanceBetweenAABB.x = aabbMin.x - aabbMax.x
-            distanceBetweenAABB.y = aabbMin.y - aabbMax.y
-            distanceBetweenAABB.z = aabbMin.z - aabbMax.z
-            radius = math.sqrt(distanceBetweenAABB.x * distanceBetweenAABB.x + 
-                                                distanceBetweenAABB.y * distanceBetweenAABB.y +
-                                                distanceBetweenAABB.z * distanceBetweenAABB.z)
+                # Blender bound radius
+                #TEMP?
+                distanceBetweenAABB = Vector3()
+                distanceBetweenAABB.x = aabbMin.x - aabbMax.x
+                distanceBetweenAABB.y = aabbMin.y - aabbMax.y
+                distanceBetweenAABB.z = aabbMin.z - aabbMax.z
+                radius = math.sqrt(distanceBetweenAABB.x * distanceBetweenAABB.x + 
+                                                    distanceBetweenAABB.y * distanceBetweenAABB.y +
+                                                    distanceBetweenAABB.z * distanceBetweenAABB.z)
 
-            # Material bound
-            if (materialSlotSize > 1):
-                bound = Vector4()
-                bound.x = center.x
-                bound.y = center.y
-                bound.z = center.z
-                bound.w = radius
-                Exporter.objectInfo.lodGroups[i].meshes[0].bounds.append(bound)
+                # Material bound
+                if (materialSlotSize > 1):
+                    bound = Vector4()
+                    bound.x = center.x
+                    bound.y = center.y
+                    bound.z = center.z
+                    bound.w = radius
+                    Exporter.objectInfo.lodGroups[i].meshes[0].bounds.append(bound)
 
-            # Vertices
-            for vertexID, vertex in enumerate(selectedObject.data.vertices):
-                vertexInfo = VertexInfo()
+                # Vertices
+                for vertexID, vertex in enumerate(selectedObject.data.vertices):
+                    vertexInfo = VertexInfo()
 
-                vertexInfo.position.x = vertex.co.x
-                vertexInfo.position.y = vertex.co.y
-                vertexInfo.position.z = vertex.co.z
+                    vertexInfo.position.x = vertex.co.x
+                    vertexInfo.position.y = vertex.co.y
+                    vertexInfo.position.z = vertex.co.z
 
-                Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices.append(vertexInfo)
+                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices.append(vertexInfo)
 
-                # Vertex weights from vertex groups
+                    # Vertex weights from vertex groups
+                    if (Exporter.objectInfo.lodGroups[i].meshes[0].skinned):
+                        groupID = 0
+                        for mainVertexGroup in selectedObject.vertex_groups:
+                            group_index = mainVertexGroup.index
+
+                            if group_index in [i.group for i in vertex.groups]:
+                                for boneID, bone in enumerate(Exporter.blenderArmature.data.bones):
+                                    if (bone.name != mainVertexGroup.name):
+                                        continue
+
+                                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendIndex[groupID] = boneID
+
+                                    if (boneID not in Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].usedBlendIndex):
+                                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].usedBlendIndex.append(np.ushort(boneID))
+
+                                    break
+
+                                weight = vertex.groups[[vertGroup.group for vertGroup in vertex.groups].index(group_index)].weight
+
+                                Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendWeight[groupID] = weight
+
+                                groupID += 1
+
+                # Sort blendWeight and blendIndex by weights in ascending order
                 if (Exporter.objectInfo.lodGroups[i].meshes[0].skinned):
-                    groupID = 0
-                    for mainVertexGroup in selectedObject.vertex_groups:
-                        group_index = mainVertexGroup.index
+                    for vertexID in range(0, len(Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices)):
+                        vertexInfo = Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID]
 
-                        if group_index in [i.group for i in vertex.groups]:
-                            for boneID, bone in enumerate(Exporter.blenderArmature.data.bones):
-                                if (bone.name != mainVertexGroup.name):
-                                    continue
+                        weights, indices = zip(*sorted(zip(vertexInfo.blendWeight, vertexInfo.blendIndex), reverse=True))
+                        
+                        weights = list(weights) # from tuple to list
+                        indices = list(indices) # from tuple to list
+                        
+                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendWeight[0] = weights[2] # Swap the first and third values
+                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendWeight[1] = weights[1]
+                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendWeight[2] = weights[0] # Swap the first and third values
+                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendWeight[3] = weights[3]
+                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendIndex[0] = indices[2] # Swap the first and third values
+                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendIndex[1] = indices[1]
+                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendIndex[2] = indices[0] # Swap the first and third values
+                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendIndex[3] = indices[3]
 
-                                Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendIndex[groupID] = boneID
+                # Loops
+                currentLoopIndex = 0
+                for loop in selectedObject.data.loops:
+                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].indices.append(loop.vertex_index)
 
-                                if (boneID not in Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].usedBlendIndex):
-                                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].usedBlendIndex.append(np.ushort(boneID))
+                    # Vertex UV
+                    for layerID, uv_layer in enumerate(selectedObject.data.uv_layers):
+                        if (layerID == 0):
+                            #Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv0.x = selectedObject.data.uv_layers[0].uv[loop.index].vector.x
+                            #Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv0.y = -selectedObject.data.uv_layers[0].uv[loop.index].vector.y
 
-                                break
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv0.x = uv_layer.data[loop.index].uv.x
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv0.y = -uv_layer.data[loop.index].uv.y
+                        elif (layerID == 1):
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv1.x = uv_layer.data[loop.index].uv.x
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv1.y = -uv_layer.data[loop.index].uv.y
+                        elif (layerID == 2):
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv2.x = uv_layer.data[loop.index].uv.x
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv2.y = -uv_layer.data[loop.index].uv.y
+                        elif (layerID == 3):
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv3.x = uv_layer.data[loop.index].uv.x
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv3.y = -uv_layer.data[loop.index].uv.y
+                        elif (layerID == 4):
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv4.x = uv_layer.data[loop.index].uv.x
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv4.y = -uv_layer.data[loop.index].uv.yy
+                        elif (layerID == 5):
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv5.x = uv_layer.data[loop.index].uv.x
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv5.y = -uv_layer.data[loop.index].uv.yy
+                        elif (layerID == 6):
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv6.x = uv_layer.data[loop.index].uv.x
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv6.y = -uv_layer.data[loop.index].uv.yy
+                        elif (layerID == 7):
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv7.x = uv_layer.data[loop.index].uv.x
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv7.y = -uv_layer.data[loop.index].uv.y
 
-                            weight = vertex.groups[[vertGroup.group for vertGroup in vertex.groups].index(group_index)].weight
+                    # Vertex normal
+                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].normal.x = loop.normal.x
+                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].normal.y = loop.normal.y
+                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].normal.z = loop.normal.z
 
-                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendWeight[groupID] = weight
+                    # Vertex tangent
+                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].tangent.x = loop.tangent.x
+                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].tangent.y = loop.tangent.y
+                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].tangent.z = loop.tangent.z
 
-                            groupID += 1
+                    # Vertex binormal
+                    #Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].binormal.x = loop.bitangent.x
+                    #Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].binormal.y = loop.bitangent.y
+                    #Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].binormal.z = loop.bitangent.z
 
-            # Sort blendWeight and blendIndex by weights in ascending order
-            if (Exporter.objectInfo.lodGroups[i].meshes[0].skinned):
-                for vertexID in range(0, len(Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices)):
-                    vertexInfo = Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID]
+                    # Vertex color
+                    if (len(selectedObject.data.vertex_colors) == 0):
+                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[0] = 127
+                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[1] = 127
+                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[2] = 127
+                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[3] = 255
+                    else:
+                        # If the mesh has no vertex colors, set the following colors
+                        for color in selectedObject.data.vertex_colors:
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[0] = int(color.data[loop.index].color[2] * 255)
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[1] = int(color.data[loop.index].color[1] * 255)
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[2] = int(color.data[loop.index].color[0] * 255)
+                            Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[3] = int(color.data[loop.index].color[3] * 255)
 
-                    weights, indices = zip(*sorted(zip(vertexInfo.blendWeight, vertexInfo.blendIndex), reverse=True))
-                    
-                    weights = list(weights) # from tuple to list
-                    indices = list(indices) # from tuple to list
-                    
-                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendWeight[0] = weights[2] # Swap the first and third values
-                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendWeight[1] = weights[1]
-                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendWeight[2] = weights[0] # Swap the first and third values
-                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendWeight[3] = weights[3]
-                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendIndex[0] = indices[2] # Swap the first and third values
-                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendIndex[1] = indices[1]
-                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendIndex[2] = indices[0] # Swap the first and third values
-                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[vertexID].blendIndex[3] = indices[3]
+                    currentLoopIndex += 1
 
-            # Loops
-            currentLoopIndex = 0
-            for loop in selectedObject.data.loops:
-                Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].indices.append(loop.vertex_index)
-
-                # Vertex UV
-                for layerID, uv_layer in enumerate(selectedObject.data.uv_layers):
-                    if (layerID == 0):
-                        #Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv0.x = selectedObject.data.uv_layers[0].uv[loop.index].vector.x
-                        #Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv0.y = -selectedObject.data.uv_layers[0].uv[loop.index].vector.y
-
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv0.x = uv_layer.data[loop.index].uv.x
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv0.y = -uv_layer.data[loop.index].uv.y
-                    elif (layerID == 1):
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv1.x = uv_layer.data[loop.index].uv.x
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv1.y = -uv_layer.data[loop.index].uv.y
-                    elif (layerID == 2):
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv2.x = uv_layer.data[loop.index].uv.x
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv2.y = -uv_layer.data[loop.index].uv.y
-                    elif (layerID == 3):
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv3.x = uv_layer.data[loop.index].uv.x
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv3.y = -uv_layer.data[loop.index].uv.y
-                    elif (layerID == 4):
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv4.x = uv_layer.data[loop.index].uv.x
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv4.y = -uv_layer.data[loop.index].uv.yy
-                    elif (layerID == 5):
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv5.x = uv_layer.data[loop.index].uv.x
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv5.y = -uv_layer.data[loop.index].uv.yy
-                    elif (layerID == 6):
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv6.x = uv_layer.data[loop.index].uv.x
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv6.y = -uv_layer.data[loop.index].uv.yy
-                    elif (layerID == 7):
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv7.x = uv_layer.data[loop.index].uv.x
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].uv7.y = -uv_layer.data[loop.index].uv.y
-
-                # Vertex normal
-                Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].normal.x = loop.normal.x
-                Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].normal.y = loop.normal.y
-                Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].normal.z = loop.normal.z
-
-                # Vertex tangent
-                Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].tangent.x = loop.tangent.x
-                Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].tangent.y = loop.tangent.y
-                Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].tangent.z = loop.tangent.z
-
-                # Vertex binormal
-                #Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].binormal.x = loop.bitangent.x
-                #Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].binormal.y = loop.bitangent.y
-                #Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].binormal.z = loop.bitangent.z
-
-                # Vertex color
-                if (len(selectedObject.data.vertex_colors) == 0):
-                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[0] = 127
-                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[1] = 127
-                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[2] = 127
-                    Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[3] = 255
-                else:
-                    # If the mesh has no vertex colors, set the following colors
-                    for color in selectedObject.data.vertex_colors:
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[0] = int(color.data[loop.index].color[2] * 255)
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[1] = int(color.data[loop.index].color[1] * 255)
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[2] = int(color.data[loop.index].color[0] * 255)
-                        Exporter.objectInfo.lodGroups[i].meshes[0].geometry[mtlIndex].vertices[loop.vertex_index].color[3] = int(color.data[loop.index].color[3] * 255)
-
-                currentLoopIndex += 1
-
-            mtlIndex += 1
-        
-        duplicatedBlenderMesh.select_set(True)
-        #except:
-            #bpy.ops.object.delete()
-            #return "ERROR_CODE_1"
+                mtlIndex += 1
+            
+            duplicatedBlenderMesh.select_set(True)
+        except:
+            bpy.ops.object.delete()
+            return "ERROR_CODE_1"
     
     # Blender model materials
     #TODO lodGroups[i].meshes[k].geometry[k]
@@ -1265,49 +1265,49 @@ def start_export(options):
 
             if (Exporter.objectInfo.textures[i].texture.format.name == "DXT1"):
                 texture.pixelFormat = 827611204
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "DXT3"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "DXT3"):
                 texture.pixelFormat = 861165636
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "DXT5"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "DXT5"):
                 texture.pixelFormat = 894720068
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "X8R8G8B8"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "X8R8G8B8"):
                 texture.pixelFormat = 22
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "A8R8G8B8"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "A8R8G8B8"):
                 texture.pixelFormat = 21
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "L8"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "L8"):
                 texture.pixelFormat = 50
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "R8G8B8"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "R8G8B8"):
                 texture.pixelFormat = 20
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "R5G6B5"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "R5G6B5"):
                 texture.pixelFormat = 23
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "X1R5G5B5"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "X1R5G5B5"):
                 texture.pixelFormat = 24
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "A1R5G5B5"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "A1R5G5B5"):
                 texture.pixelFormat = 25
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "A4R4G4B4"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "A4R4G4B4"):
                 texture.pixelFormat = 26
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "R3G3B2"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "R3G3B2"):
                 texture.pixelFormat = 27
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "A8"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "A8"):
                 texture.pixelFormat = 28
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "A8R3G3B2"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "A8R3G3B2"):
                 texture.pixelFormat = 29
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "X4R4G4B4"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "X4R4G4B4"):
                 texture.pixelFormat = 30
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "A2B10G10R10"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "A2B10G10R10"):
                 texture.pixelFormat = 31
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "A8B8G8R8"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "A8B8G8R8"):
                 texture.pixelFormat = 32
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "X8B8G8R8"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "X8B8G8R8"):
                 texture.pixelFormat = 33
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "G16R16"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "G16R16"):
                 texture.pixelFormat = 34
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "A2R10G10B10"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "A2R10G10B10"):
                 texture.pixelFormat = 35
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "A16B16G16R16"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "A16B16G16R16"):
                 texture.pixelFormat = 36
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "A8L8"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "A8L8"):
                 texture.pixelFormat = 51
-            elif (Exporter.objectInfo.textures[i].texture.format.name ==  "A4L4"):
+            elif (Exporter.objectInfo.textures[i].texture.format.name == "A4L4"):
                 texture.pixelFormat = 52
 
             texture.pixelFormat = np.uint32(texture.pixelFormat)
