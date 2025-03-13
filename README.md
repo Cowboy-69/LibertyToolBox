@@ -12,11 +12,13 @@ Recommended minimum version of Blender: 2.93.
 ## Usage:
 Go to File -> Export -> GTA IV drawable (.wdr). Active collection will be exported.
 
+A Blender empty is a bone.
+
 Bones and materials are customized in the properties:
 - Collection: LibertyToolBox - Skeleton
-- Object: LibertyToolBox - Bone
-- Bone: LibertyToolBox - Bone
-- Material: LibertyToolBox
+- Empty - Object: LibertyToolBox - Bone
+- Armature bone - Bone: LibertyToolBox - Bone
+- Mesh - Material: LibertyToolBox
 
 ## Known issues:
 - Meshes that were not made in GTA IV may not have textures displayed correctly due to the fact that Blender stores UV information in loops rather than vertices. To fix this at the cost of additional vertices, check the “Modify geometry” checkbox during export. If this helps only partially, split the edges of the mesh completely.
