@@ -763,10 +763,23 @@ def start_export(options):
 
             bone.name = blenderBone.name
 
-            bone.id = boneID
+            # Bone id
+            if (blenderBone.libertytool_bone.id == -1):
+                bone.id = boneID #TEMP?
+            else:
+                bone.id = blenderBone.libertytool_bone.id
 
-            bone.index = boneID
-            bone.mirror = boneID
+            # Bone index
+            if (blenderBone.libertytool_bone.index == -1):
+                bone.index = boneID #TEMP?
+            else:
+                bone.index = blenderBone.libertytool_bone.index
+
+            # Bone mirror
+            if (blenderBone.libertytool_bone.mirror == -1):
+                bone.mirror = boneID #TEMP?
+            else:
+                bone.mirror = blenderBone.libertytool_bone.mirror
 
             # Positions
             bone.localOffset.x = blenderBone.matrix_local.translation.x
